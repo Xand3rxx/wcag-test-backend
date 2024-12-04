@@ -16,7 +16,7 @@ class AccessibilityController extends Controller
     public function __invoke(HTMLFileUploadRequest $request, AccessibilityService $service): JsonResponse
     {
         // Get the uploaded file
-        $htmlFile = $request->file('html_file');
+        $htmlFile = $request->file('file');
 
         // Read the content of the uploaded file
         $htmlContent = file_get_contents($htmlFile->getRealPath());
