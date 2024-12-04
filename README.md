@@ -11,10 +11,10 @@ This API application features the following:
 ## Environment Setup
 
 1. CD into the application root directory with your command prompt/terminal/git bash.
-2. Run `cp .env.example .env`.
-3. Inside `.env` file, setup database, mail and other configurations for `production`.
-4. Run `composer install`.
-5. Run `php artisan key:generate` command.
-6. Run `php artisan serve` command.
+2. Run `cp .env.example .env` command to create a local environment configuration file.
+3. Inside the `.env` file, setup database, mail and other configurations for `production` (optional for this project).
+4. Run `composer install` to install the project dependencies in the `composer.json` file.
+5. Run `php artisan key:generate` command to generates the application key.
+6. Run `php artisan serve` or `php artisan serve --port=PORT_NUMBER` command to start a local development server.
 7. Define additional routes in the `routes/api.php` file.
 8. Run `composer dump-autoload` to generate new optimized autoload files (optional).
