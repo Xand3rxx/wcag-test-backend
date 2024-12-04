@@ -2,6 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Response;
+use App\Http\Controllers\AccessibilityController;
+
+Route::post('analyze-html', AccessibilityController::class);
 
 Route::fallback(function () {
     return response()->json([

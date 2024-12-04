@@ -16,6 +16,7 @@ use GuzzleHttp\Exception\TransferException;
 use BadMethodCallException;
 use Error;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Validation\ValidationException;
 
 class Handler extends ExceptionHandler
 {
@@ -82,10 +83,13 @@ class Handler extends ExceptionHandler
     {
         // Only handle API responses for requests that are either JSON or API routes
         if (!$request->wantsJson() && !$request->is('api/*')) {
-            return parent::render($request, $exception);
+            return $this->apiResponse('The specified resource(s) cannot be found.', Response::HTTP_NOT_FOUND);
         }
 
         $responseMap = [
+            ValidationException::class => function () use ($exception) {
+                return $this->apiResponse($exception->validator->errors()->first() ?? $exception->getMessage(), Response::HTTP_BAD_REQUEST);
+            },
             AuthenticationException::class => function () {
                 return $this->apiResponse('Please check your login credentials.', Response::HTTP_UNAUTHORIZED);
             },
@@ -93,13 +97,13 @@ class Handler extends ExceptionHandler
                 return $this->apiResponse('Method Not Allowed.', Response::HTTP_METHOD_NOT_ALLOWED);
             },
             NotFoundHttpException::class => function () {
-                return $this->apiResponse('The specified resource(s) cannot be found.', Response::HTTP_BAD_REQUEST);
+                return $this->apiResponse('The specified resource(s) cannot be found.', Response::HTTP_NOT_FOUND);
             },
             HttpException::class => function ($exception) {
                 return $this->apiResponse('Unable to perform the specified action at the moment.', $exception->getStatusCode());
             },
             ModelNotFoundException::class => function ($exception) {
-                return $this->apiResponse('Entry for ' . str_replace('App', '', $exception->getModel()) . ' not found', Response::HTTP_BAD_REQUEST);
+                return $this->apiResponse('Entry for ' . str_replace('App', '', $exception->getModel()) . ' not found', Response::HTTP_NOT_FOUND);
             },
             QueryException::class => function () {
                 return $this->apiResponse('Unable to perform the specified action at the moment.', Response::HTTP_UNPROCESSABLE_ENTITY);
