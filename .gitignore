@@ -1,30 +1,53 @@
-/.phpunit.cache
-/node_modules
-/public/build
-/public/hot
-/public/storage
-/storage/*.key
-/storage/pail
-/vendor
-.AppleDouble
-.DS_Store
-.LSOverride
-.TemporaryItems
-.Trashes
+# Composer and PHP related files
+/vendor/
+.phpunit.cache
+.phpunit.result.cache
+.phpactor.json
+*.key
+
+# Node.js related files
+/node_modules/
+/npm-debug.log
+/yarn-error.log
+
+# Environment files
 .env
 .env.backup
 .env.production
-.phpactor.json
-.phpunit.result.cache
+
+# Laravel specific
+/public/storage
+/storage/*.key
+/storage/pail
+/.platform
+/.ebextensions
+
+# Public build assets
+/public/build
+/public/hot
+
+# IDE and editor files
+/.idea/
+/.vscode/
+/.phpstorm/
+/.nova
+/.zed
+
+# macOS system files
+.DS_Store
+.DS_Store?
+._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.TemporaryItems
+.Trashes
 Icon?
+
+# Miscellaneous system and app files
+ehthumbs.db
+auth.json
 Homestead.json
 Homestead.yaml
-auth.json
-ehthumbs.db
-npm-debug.log
-yarn-error.log
 /.fleet
-/.idea
-/.nova
-/.vscode
-/.zed
+*.zip
