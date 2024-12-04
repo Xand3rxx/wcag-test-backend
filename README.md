@@ -1,0 +1,20 @@
+## About this repository
+
+WCAG stands for Web Content Accessibility Guidelines. In simple terms, it's a set of rules that help make websites easier to use for people with disabilities, like those who are blind, deaf, or have difficulty using a mouse. These guidelines ensure that websites are accessible to everyone, no matter their abilities.
+
+This API application features the following:
+
+- Accept an HTML file upload.
+- Analyze accessibility issues (e.g., `missing alt attributes`, `skipped heading levels`) using a rule-based algorithm.
+- Return a JSON response with a compliance score and suggested fixes.
+
+## Environment Setup
+
+1. CD into the application root directory with your command prompt/terminal/git bash.
+2. Run `cp .env.example .env`.
+3. Inside `.env` file, setup database, mail and other configurations for `production`.
+4. Run `composer install`.
+5. Run `php artisan key:generate` command.
+6. Run `php artisan serve` command.
+7. Define additional routes in the `routes/api.php` file.
+8. Run `composer dump-autoload` to generate new optimized autoload files (optional).
