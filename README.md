@@ -18,3 +18,8 @@ This API application features the following:
 6. Run `php artisan serve` or `php artisan serve --port=PORT_NUMBER` command to start a local development server.
 7. Define additional routes in the `routes/api.php` file.
 8. Run `composer dump-autoload` to generate new optimized autoload files (optional).
+
+
+## Project Screenshots
+
+![Screenshot 1](public/wcag-backend.png)
