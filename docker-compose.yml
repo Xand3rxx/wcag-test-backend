@@ -1,0 +1,13 @@
+services:
+    app:
+        build:
+            context: ./
+            dockerfile: ./Dockerfile
+        image: wcag-backend
+        container_name: wcag-backend
+        restart: always
+        ports:
+            - "9600:80"
+        volumes:
+            - ./docker/www.conf.default:/usr/local/etc/php-fpm.d/www.conf.default
+            - ./docker/www.conf:/usr/local/etc/php-fpm.d/www.conf
