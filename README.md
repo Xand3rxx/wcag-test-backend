@@ -1,4 +1,4 @@
-## About this repository
+<!-- ## About this repository
 
 WCAG stands for Web Content Accessibility Guidelines. In simple terms, it's a set of rules that help make websites easier to use for people with disabilities, like those who are blind, deaf, or have difficulty using a mouse. These guidelines ensure that websites are accessible to everyone, no matter their abilities.
 
@@ -6,7 +6,121 @@ This API application features the following:
 
 - Accept an HTML file upload.
 - Analyze accessibility issues (e.g., `missing alt attributes`, `skipped heading levels`) using a rule-based algorithm.
-- Return a JSON response with a compliance score and suggested fixes.
+- Return a JSON response with a compliance score and suggested fixes. -->
+
+# Accessibility Compliance Analysis System
+
+## Overview
+
+This system is designed to analyze the accessibility compliance of uploaded HTML files against key WCAG 2.1 guidelines. The primary function of the service is to scan HTML content and identify potential issues related to accessibility. It provides a compliance score and a list of accessibility issues, along with suggested fixes for each detected issue.
+
+---
+
+## Components
+
+1. **HTMLFileUploadRequest** (Request Class)
+2. **AccessibilityController** (Controller Class)
+3. **AccessibilityService** (Service Class)
+
+---
+
+## Architecture Overview
+
+The system operates with three core components:
+
+1. **Frontend (User Interface)**  
+   Allows users to upload HTML files.
+   
+2. **Backend**  
+   Contains the **AccessibilityController** and **AccessibilityService**. The controller is responsible for accepting the uploaded file, validating it, and passing the content to the service for analysis.
+   
+3. **Service Layer**  
+   The **AccessibilityService** processes the HTML content, performs WCAG checks, and returns a compliance score along with a list of issues.
+
+---
+
+## Flow of the Application
+
+### 1. HTML File Upload
+- The user uploads an HTML file via the [frontend](https://wcag-test-frontend.vercel.app/).
+- The request is handled by **HTMLFileUploadRequest**, which validates the file (checking if it's an HTML file and does not exceed the file size limit).
+
+### 2. File Processing
+- If validation passes, the file is passed to the **AccessibilityController** where the content is extracted.
+- The controller sends the content to the **AccessibilityService** for analysis.
+
+### 3. Accessibility Analysis
+- The **AccessibilityService** analyzes the HTML file for common accessibility issues (e.g., missing alt attributes, skipped heading levels, color contrast, etc.).
+
+### 4. Response
+- The service returns a compliance score (out of 100) and a list of issues with suggested fixes.
+- The controller then returns the results in a JSON response to the frontend.
+
+---
+
+## Request Validation - HTMLFileUploadRequest
+
+The **HTMLFileUploadRequest** class is responsible for validating the incoming request before any processing begins. It ensures that the uploaded file is an HTML file and does not exceed the size limit.
+
+### Key Features:
+- **file**: The uploaded file must be an HTML file with a MIME type of `html` and a maximum size of **256 KB**.
+- **stopOnFirstFailure**: Validation stops as soon as the first error is encountered, providing quicker feedback.
+
+---
+
+## Controller - AccessibilityController
+
+The **AccessibilityController** receives the validated request, extracts the HTML file content, and passes it to the **AccessibilityService** for analysis. If the HTML file is empty, it returns an error.
+
+### Key Features:
+- **HTML file extraction**: Extracts the raw content of the uploaded HTML file using `file_get_contents`.
+- **Empty file check**: If the file is empty, a `400 Bad Request` response is returned.
+- **Calling the Service**: Passes the HTML content to **AccessibilityService** for detailed analysis.
+
+---
+
+## Service Layer - AccessibilityService
+
+The **AccessibilityService** is the heart of the analysis process. It scans the HTML content for specific accessibility issues based on WCAG 2.1 guidelines. Each issue detected is accompanied by a suggested fix, and the compliance score is adjusted based on the severity of the issues.
+
+### Scoring Logic:
+1. **Initial Score**: The score starts at **100** and is deducted based on the severity of issues found in the HTML content.
+2. **Issue Severity**: Each identified issue has a predefined score deduction:
+   - **5 points** for minor issues (e.g., missing alt attributes, low color contrast, missing labels).
+   - **10 points** for more severe issues (e.g., skipped heading levels, missing form labels with for attributes).
+3. **List of Issues**: The service returns a list of detected accessibility issues. Each issue contains:
+   - The issue description.
+   - The suggested fix to resolve the issue.
+
+### Example Issues:
+- Missing alt attribute for images.
+- Skipped heading levels.
+- Broken links.
+
+---
+
+## Compliance Scoring
+
+The service calculates a compliance score by:
+
+1. Starting at **100 points**.
+2. Deducting points for each issue detected:
+   - **5 points** for minor issues.
+   - **10 points** for major issues.
+3. The final compliance score is returned as part of the response.
+
+### Example of Scoring:
+- **Missing alt attributes**: Deduct 5 points.
+- **Skipped heading levels**: Deduct 10 points.
+- **Low color contrast**: Deduct 5 points.
+
+The final score could be **80/100** if **20 points** were deducted from the original score.
+
+---
+
+## Conclusion
+
+This design outlines a robust system for analyzing accessibility issues in HTML files based on WCAG 2.1 guidelines. By incorporating various accessibility checks such as image alt text, heading structure, color contrast, and form labels, the service can provide developers and content creators with valuable insights into the accessibility of their websites. With this system in place, users can easily understand and address potential accessibility issues, improving the overall user experience for everyone.
 
 ## Environment Setup
 
@@ -44,6 +158,6 @@ To run the test suite and ensure everything is working as expected, follow these
   Duration: 0.07s
 ```
 
-## Project Screenshots
+## Project Screenshot
 
 ![Screenshot 1](public/wcag-backend.png)

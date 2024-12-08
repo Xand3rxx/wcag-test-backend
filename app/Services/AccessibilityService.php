@@ -139,7 +139,7 @@ class AccessibilityService
                 // Add issue and deduct score
                 $lineNumber = $this->getLineNumber($lines, $textColor);
                 $this->addIssue($issues, 'Low color contrast', 'low_color_contrast', $lineNumber, "Color: $textColor, Background: $bgColor");
-                $scoreDeducted += 5; // Deduct 5 points for each issue
+                $scoreDeducted += 5;
             }
         }
 
@@ -424,8 +424,6 @@ class AccessibilityService
         // Implement a check for broken links (simplified for example)
         return $url === '#';
     }
-
-
 
     /**
      * Convert Hex color to RGB array
