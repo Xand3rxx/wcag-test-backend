@@ -379,14 +379,14 @@ class AccessibilityService
     {
         return match ($category) {
             'missing_alt' => '<img src="image.jpg" alt="Description of image" />',
-            'skipped_headings' => '<h1>Main Heading</h1><h2>Sub Heading</h2>',
-            'low_color_contrast' => '<p style="color: #f0f0f0; background-color: #ffffff;">Low contrast text</p>',
-            'missing_tabindex' => '<button>Click Me</button>',
-            'missing_labels' => '<input type="text" id="name" /><label for="name">Name</label>',
-            'missing_skip_link' => '<a href="#maincontent" class="skip-link">Skip to Content</a>',
-            'font_size_too_small' => '<p style="font-size: 12px;">Small text</p>',
-            'broken_links' => '<a href="#">Broken Link</a>',
-            'missing_input_labels' => '<input type="text" id="email" /><label for="email">Email</label>',
+        'skipped_headings' => '<h1>Main Heading</h1><h2>Sub Heading</h2>',
+        'low_color_contrast' => '<p style="color: #000000; background-color: #ffffff;">Good contrast text</p>',
+        'missing_tabindex' => '<button tabindex="0">Click Me</button>',
+        'missing_labels' => '<input type="text" id="name" /><label for="name">Name</label>',
+        'missing_skip_link' => '<a href="#maincontent" class="skip-link">Skip to Content</a>',
+        'font_size_too_small' => '<p style="font-size: 16px;">Text with appropriate size</p>',
+        'broken_links' => '<a href="https://google.com">Valid Link</a>',
+        'missing_input_labels' => '<input type="text" id="email" /><label for="email">Email</label>',
             default => '<!-- No sample available -->',
         };
     }
