@@ -70,10 +70,9 @@ class AccessibilityService
             $lineNumber = $this->getLineNumber($lines, $img);
             if (strpos($img, 'alt="') === false && strpos($img, 'alt=""') === false) {
                 $this->addIssue($issues, 'Missing alt attribute for image', 'missing_alt', $lineNumber, $img);
+                $scoreDeducted += 5;
             }
         }
-
-        $scoreDeducted += 5;
 
         return $scoreDeducted;
     }
@@ -95,10 +94,9 @@ class AccessibilityService
             if (intval($headings[1][$i]) > intval($headings[1][$i - 1]) + 1) {
                 $lineNumber = $this->getLineNumber($lines, $headings[0][$i]);
                 $this->addIssue($issues, 'Skipped heading levels', 'skipped_headings', $lineNumber, $headings[0][$i]);
+                $scoreDeducted += 10;
             }
         }
-
-        $scoreDeducted += 10;
 
         return $scoreDeducted;
     }
@@ -141,10 +139,9 @@ class AccessibilityService
                 // Add issue and deduct score
                 $lineNumber = $this->getLineNumber($lines, $textColor);
                 $this->addIssue($issues, 'Low color contrast', 'low_color_contrast', $lineNumber, "Color: $textColor, Background: $bgColor");
+                $scoreDeducted += 5;
             }
         }
-
-        $scoreDeducted += 5;
 
         return $scoreDeducted;
     }
@@ -166,10 +163,9 @@ class AccessibilityService
             $lineNumber = $this->getLineNumber($lines, $element);
             if (strpos($element, 'tabindex="') === false) {
                 $this->addIssue($issues, 'Missing tabindex for interactive elements', 'missing_tabindex', $lineNumber, $element);
+                $scoreDeducted += 5;
             }
         }
-
-        $scoreDeducted += 5;
 
         return $scoreDeducted;
     }
@@ -210,10 +206,9 @@ class AccessibilityService
                     'line' => $lineNumber,
                     'details' => $input
                 ];
+                $scoreDeducted += 5;
             }
         }
-
-        $scoreDeducted += 5;
 
         return $scoreDeducted;
     }
@@ -229,7 +224,6 @@ class AccessibilityService
     public function checkMissingSkipLink(string $htmlContent, array &$issues, array $lines): int
     {
         $scoreDeducted = 0;
-
         if (strpos($htmlContent, '<a href="#maincontent" class="skip-link">Skip to Content</a>') === false) {
             $this->addIssue($issues, 'Missing skip navigation link', 'missing_skip_link', 1, '<a href="#maincontent" class="skip-link">Skip to Content</a>');
             $scoreDeducted += 5;
@@ -255,10 +249,9 @@ class AccessibilityService
             $lineNumber = $this->getLineNumber($lines, "font-size: $fontSize");
             if (intval($fontSize) < 16) {
                 $this->addIssue($issues, 'Font size too small', 'font_size_too_small', $lineNumber, "<p style='font-size: {$fontSize}px;'>Small text</p>");
+                $scoreDeducted += 5;
             }
         }
-
-        $scoreDeducted += 5;
 
         return $scoreDeducted;
     }
@@ -280,10 +273,9 @@ class AccessibilityService
             $lineNumber = $this->getLineNumber($lines, $link);
             if ($this->isBrokenLink($link)) {
                 $this->addIssue($issues, 'Broken link or missing href attribute', 'broken_links', $lineNumber, "<a href='$link'>Broken Link</a>");
+                $scoreDeducted += 5;
             }
         }
-
-        $scoreDeducted += 5;
 
         return $scoreDeducted;
     }
@@ -316,10 +308,9 @@ class AccessibilityService
             // Check if the input has an associated label
             if (!$this->hasAssociatedLabel($input, $htmlContent)) {
                 $this->addIssue($issues, 'Missing label for input element', 'missing_input_labels', $lineNumber, $input);
+                $scoreDeducted += 10;  // Deduct 10 points for missing label
             }
         }
-
-        $scoreDeducted += 10;
 
         return $scoreDeducted;
     }
