@@ -1,5 +1,3 @@
-#!/bin/sh
-
 # update application cache
 composer install
 cp .env.development .env
@@ -9,4 +7,4 @@ chmod -R 777 /var/www/bootstrap
 chmod -R 777 /var/www/storage
 
 # start the application
-php-fpm -D
+php-fpm -D &&  nginx -g "daemon off;"

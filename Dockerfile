@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy needed files and folder
+COPY ./docker/nginx.conf /etc/nginx/nginx.conf
 COPY ./docker/build.sh /build.sh
 COPY . .
 

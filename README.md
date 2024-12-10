@@ -122,7 +122,7 @@ The final score could be **80/100** if **20 points** were deducted from the orig
 
 This design outlines a robust system for analyzing accessibility issues in HTML files based on WCAG 2.1 guidelines. By incorporating various accessibility checks such as image alt text, heading structure, color contrast, and form labels, the service can provide developers and content creators with valuable insights into the accessibility of their websites. With this system in place, users can easily understand and address potential accessibility issues, improving the overall user experience for everyone.
 
-## Environment Setup
+## Environment Setup (local)
 
 1. CD into the application root directory with your command prompt/terminal/git bash.
 2. Run `cp .env.example .env` command to create a local environment configuration file.
@@ -132,6 +132,75 @@ This design outlines a robust system for analyzing accessibility issues in HTML 
 6. Run `php artisan serve` or `php artisan serve --port=PORT_NUMBER` command to start a local development server.
 7. Define additional routes in the `routes/api.php` file.
 8. Run `composer dump-autoload` to generate new optimized autoload files (optional).
+
+## Docker Setup
+
+This guide will help you set up and run your Laravel project using Docker.
+
+## Prerequisites
+
+Before starting, ensure you have the following installed:
+- [Docker](https://www.docker.com/products/docker-desktop/) (including Docker Compose)
+
+## Build and Run Docker Containers
+
+1. Clone your Laravel project (if you haven't already):
+   ```bash
+   git clone https://github.com/Xand3rxx/wcag-test-backend.git
+   cd <your-project-directory>
+   ```
+
+2. Build and run the Docker containers with the following command:
+    ```
+    docker-compose up -d --build
+    ```
+
+    This command will:
+    - Build the Docker images based on the Dockerfile for the Laravel application.
+    - Start the application and the necessary services (e.g., PHP, MySQL) in the background.
+
+## What Happens in the build.sh Script
+When the container starts, the following steps are executed in the /docker/build.sh script:
+
+1. **Install Laravel dependencies:** The `composer install` command installs all required PHP dependencies defined in `composer.json`.
+2. **Set up environment:** Copies the `.env.development` file to `.env` and generates the Laravel application key.
+3. **Clear application cache:** Optimizes and clears the Laravel cache.
+4. **Set permissions:** Ensures the necessary directories (bootstrap and storage) have proper write permissions.
+5. **Start PHP-FPM:** The `php-fpm -D` command starts PHP FastCGI Process Manager in the background.
+
+## Accessing the Application
+
+Once the containers are running, you can access your Laravel application by navigating to [http://localhost:9600](http://localhost:9600) in your web browser.
+
+## Stopping and Removing Containers
+
+To stop the running containers:
+```
+docker-compose down
+```
+
+To stop and remove containers, networks, and volumes (useful for resetting everything):
+```
+docker-compose down --volumes
+```
+
+## Troubleshooting
+
+If you run into any issues, you can check the logs of the app container with:
+```
+docker-compose logs app
+```
+
+If you run docker and get the error
+
+```
+Error response from daemon: Mounts denied: 
+The path <your-project-directory>/docker/www.conf.default is not shared from the host and is not known to Docker.
+```
+
+```
+You can configure shared paths from Docker -> Preferences... -> Resources -> File Sharing.
+```
 
 ## Running Tests
 To run the test suite and ensure everything is working as expected, follow these steps:
