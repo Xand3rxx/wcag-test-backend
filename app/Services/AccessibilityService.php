@@ -70,9 +70,10 @@ class AccessibilityService
             $lineNumber = $this->getLineNumber($lines, $img);
             if (strpos($img, 'alt="') === false && strpos($img, 'alt=""') === false) {
                 $this->addIssue($issues, 'Missing alt attribute for image', 'missing_alt', $lineNumber, $img);
-                $scoreDeducted += 5;
             }
         }
+
+        $scoreDeducted += 5;
 
         return $scoreDeducted;
     }
@@ -94,9 +95,10 @@ class AccessibilityService
             if (intval($headings[1][$i]) > intval($headings[1][$i - 1]) + 1) {
                 $lineNumber = $this->getLineNumber($lines, $headings[0][$i]);
                 $this->addIssue($issues, 'Skipped heading levels', 'skipped_headings', $lineNumber, $headings[0][$i]);
-                $scoreDeducted += 10;
             }
         }
+
+        $scoreDeducted += 10;
 
         return $scoreDeducted;
     }
@@ -139,9 +141,10 @@ class AccessibilityService
                 // Add issue and deduct score
                 $lineNumber = $this->getLineNumber($lines, $textColor);
                 $this->addIssue($issues, 'Low color contrast', 'low_color_contrast', $lineNumber, "Color: $textColor, Background: $bgColor");
-                $scoreDeducted += 5;
             }
         }
+
+        $scoreDeducted += 5;
 
         return $scoreDeducted;
     }
@@ -163,9 +166,10 @@ class AccessibilityService
             $lineNumber = $this->getLineNumber($lines, $element);
             if (strpos($element, 'tabindex="') === false) {
                 $this->addIssue($issues, 'Missing tabindex for interactive elements', 'missing_tabindex', $lineNumber, $element);
-                $scoreDeducted += 5;
             }
         }
+
+        $scoreDeducted += 5;
 
         return $scoreDeducted;
     }
@@ -206,9 +210,10 @@ class AccessibilityService
                     'line' => $lineNumber,
                     'details' => $input
                 ];
-                $scoreDeducted += 5;
             }
         }
+
+        $scoreDeducted += 5;
 
         return $scoreDeducted;
     }
@@ -224,6 +229,7 @@ class AccessibilityService
     public function checkMissingSkipLink(string $htmlContent, array &$issues, array $lines): int
     {
         $scoreDeducted = 0;
+
         if (strpos($htmlContent, '<a href="#maincontent" class="skip-link">Skip to Content</a>') === false) {
             $this->addIssue($issues, 'Missing skip navigation link', 'missing_skip_link', 1, '<a href="#maincontent" class="skip-link">Skip to Content</a>');
             $scoreDeducted += 5;
@@ -249,9 +255,10 @@ class AccessibilityService
             $lineNumber = $this->getLineNumber($lines, "font-size: $fontSize");
             if (intval($fontSize) < 16) {
                 $this->addIssue($issues, 'Font size too small', 'font_size_too_small', $lineNumber, "<p style='font-size: {$fontSize}px;'>Small text</p>");
-                $scoreDeducted += 5;
             }
         }
+
+        $scoreDeducted += 5;
 
         return $scoreDeducted;
     }
@@ -273,9 +280,10 @@ class AccessibilityService
             $lineNumber = $this->getLineNumber($lines, $link);
             if ($this->isBrokenLink($link)) {
                 $this->addIssue($issues, 'Broken link or missing href attribute', 'broken_links', $lineNumber, "<a href='$link'>Broken Link</a>");
-                $scoreDeducted += 5;
             }
         }
+
+        $scoreDeducted += 5;
 
         return $scoreDeducted;
     }
@@ -308,9 +316,10 @@ class AccessibilityService
             // Check if the input has an associated label
             if (!$this->hasAssociatedLabel($input, $htmlContent)) {
                 $this->addIssue($issues, 'Missing label for input element', 'missing_input_labels', $lineNumber, $input);
-                $scoreDeducted += 10;  // Deduct 10 points for missing label
             }
         }
+
+        $scoreDeducted += 10;
 
         return $scoreDeducted;
     }
@@ -350,6 +359,38 @@ class AccessibilityService
     }
 
     /**
+     * Calculate the contrast ratio between two luminance values.
+     *
+     * @param float $l1 Luminance of the lighter color
+     * @param float $l2 Luminance of the darker color
+     * @return float
+     */
+    private function calculateContrastRatio(float $l1, float $l2): float
+    {
+        return ($l1 + 0.05) / ($l2 + 0.05);
+    }
+
+    /**
+     * Calculate the luminance of a color.
+     *
+     * @param int $r Red component
+     * @param int $g Green component
+     * @param int $b Blue component
+     * @return float
+     */
+    private function calculateLuminance(int $r, int $g, int $b): float
+    {
+        // Normalize RGB values and apply the luminance formula
+        $rgb = [$r, $g, $b];
+        foreach ($rgb as &$color) {
+            $color /= 255;
+            $color = ($color <= 0.03928) ? $color / 12.92 : pow(($color + 0.055) / 1.055, 2.4);
+        }
+
+        return 0.2126 * $rgb[0] + 0.7152 * $rgb[1] + 0.0722 * $rgb[2];
+    }
+
+    /**
      * Helper function to get the line number of a match.
      *
      * @param array $lines
@@ -379,14 +420,14 @@ class AccessibilityService
     {
         return match ($category) {
             'missing_alt' => '<img src="image.jpg" alt="Description of image" />',
-        'skipped_headings' => '<h1>Main Heading</h1><h2>Sub Heading</h2>',
-        'low_color_contrast' => '<p style="color: #000000; background-color: #ffffff;">Good contrast text</p>',
-        'missing_tabindex' => '<button tabindex="0">Click Me</button>',
-        'missing_labels' => '<input type="text" id="name" /><label for="name">Name</label>',
-        'missing_skip_link' => '<a href="#maincontent" class="skip-link">Skip to Content</a>',
-        'font_size_too_small' => '<p style="font-size: 16px;">Text with appropriate size</p>',
-        'broken_links' => '<a href="https://google.com">Valid Link</a>',
-        'missing_input_labels' => '<input type="text" id="email" /><label for="email">Email</label>',
+            'skipped_headings' => '<h1>Main Heading</h1><h2>Sub Heading</h2>',
+            'low_color_contrast' => '<p style="color: #000000; background-color: #ffffff;">Good contrast text</p>',
+            'missing_tabindex' => '<button tabindex="0">Click Me</button>',
+            'missing_labels' => '<input type="text" id="name" /><label for="name">Name</label>',
+            'missing_skip_link' => '<a href="#maincontent" class="skip-link">Skip to Content</a>',
+            'font_size_too_small' => '<p style="font-size: 16px;">Text with appropriate size</p>',
+            'broken_links' => '<a href="https://google.com">Valid Link</a>',
+            'missing_input_labels' => '<input type="text" id="email" /><label for="email">Email</label>',
             default => '<!-- No sample available -->',
         };
     }
@@ -414,103 +455,6 @@ class AccessibilityService
     }
 
     /**
-     * Helper function to check if the link is broken
-     *
-     * @param string $url
-     * @return bool
-     */
-    private function isBrokenLink(string $url): bool
-    {
-        // Implement a check for broken links (simplified for example)
-        return $url === '#';
-    }
-
-    /**
-     * Convert Hex color to RGB array
-     *
-     * @param string $hexColor
-     * @return array|null
-     */
-    private function hexToRgb(string $hexColor): ?array
-    {
-        // If it's already in hex form like #ffffff, convert to RGB
-        if (preg_match('/^#([a-fA-F0-9]{6})$/', $hexColor, $matches)) {
-            $r = hexdec($matches[1][0] . $matches[1][1]);
-            $g = hexdec($matches[1][2] . $matches[1][3]);
-            $b = hexdec($matches[1][4] . $matches[1][5]);
-            return [$r, $g, $b];
-        }
-        return null;
-    }
-
-    /**
-     * Convert rgb(r,g,b) or rgba(r,g,b,a) to RGB array
-     *
-     * @param string $rgbString
-     * @return array|null
-     */
-    private function rgbToRgb(string $rgbString): ?array
-    {
-        // Handle RGB or RGBA formats like rgb(255, 0, 0) or rgba(255, 0, 0, 0.5)
-        if (preg_match('/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*\d+(\.\d+)?)?\)/', $rgbString, $matches)) {
-            return [(int)$matches[1], (int)$matches[2], (int)$matches[3]];
-        }
-        return null;
-    }
-
-    /**
-     * Check if the color contrast between two colors is below the required threshold.
-     *
-     * @param array $rgbTextColor
-     * @param array $rgbBgColor
-     * @return bool
-     */
-    private function isLowContrast(array $rgbTextColor, array $rgbBgColor): bool
-    {
-        // Calculate luminance for both colors using the WCAG formula
-        $luminanceText = $this->calculateLuminance($rgbTextColor[0], $rgbTextColor[1], $rgbTextColor[2]);
-        $luminanceBg = $this->calculateLuminance($rgbBgColor[0], $rgbBgColor[1], $rgbBgColor[2]);
-
-        // Calculate contrast ratio
-        $contrastRatio = $this->calculateContrastRatio($luminanceText, $luminanceBg);
-
-        // The WCAG threshold for normal text is 4.5:1
-        return $contrastRatio < 4.5;
-    }
-
-    /**
-     * Calculate the luminance of a color.
-     *
-     * @param int $r Red component
-     * @param int $g Green component
-     * @param int $b Blue component
-     * @return float
-     */
-    private function calculateLuminance(int $r, int $g, int $b): float
-    {
-        // Normalize RGB values and apply the luminance formula
-        $rgb = [$r, $g, $b];
-        foreach ($rgb as &$color) {
-            $color /= 255;
-            $color = ($color <= 0.03928) ? $color / 12.92 : pow(($color + 0.055) / 1.055, 2.4);
-        }
-
-        return 0.2126 * $rgb[0] + 0.7152 * $rgb[1] + 0.0722 * $rgb[2];
-    }
-
-    /**
-     * Calculate the contrast ratio between two luminance values.
-     *
-     * @param float $l1 Luminance of the lighter color
-     * @param float $l2 Luminance of the darker color
-     * @return float
-     */
-    private function calculateContrastRatio(float $l1, float $l2): float
-    {
-        return ($l1 + 0.05) / ($l2 + 0.05);
-    }
-
-    /**
      * Check if an input element has an associated label
      *
      * @param string $input The input element HTML
@@ -535,5 +479,70 @@ class AccessibilityService
 
         // If no label or aria-labelledby is found, return false
         return false;
+    }
+
+    /**
+     * Convert Hex color to RGB array
+     *
+     * @param string $hexColor
+     * @return array|null
+     */
+    private function hexToRgb(string $hexColor): ?array
+    {
+        // If it's already in hex form like #ffffff, convert to RGB
+        if (preg_match('/^#([a-fA-F0-9]{6})$/', $hexColor, $matches)) {
+            $r = hexdec($matches[1][0] . $matches[1][1]);
+            $g = hexdec($matches[1][2] . $matches[1][3]);
+            $b = hexdec($matches[1][4] . $matches[1][5]);
+            return [$r, $g, $b];
+        }
+        return null;
+    }
+
+    /**
+     * Helper function to check if the link is broken
+     *
+     * @param string $url
+     * @return bool
+     */
+    private function isBrokenLink(string $url): bool
+    {
+        // Implement a check for broken links (simplified for example)
+        return $url === '#';
+    }
+
+    /**
+     * Check if the color contrast between two colors is below the required threshold.
+     *
+     * @param array $rgbTextColor
+     * @param array $rgbBgColor
+     * @return bool
+     */
+    private function isLowContrast(array $rgbTextColor, array $rgbBgColor): bool
+    {
+        // Calculate luminance for both colors using the WCAG formula
+        $luminanceText = $this->calculateLuminance($rgbTextColor[0], $rgbTextColor[1], $rgbTextColor[2]);
+        $luminanceBg = $this->calculateLuminance($rgbBgColor[0], $rgbBgColor[1], $rgbBgColor[2]);
+
+        // Calculate contrast ratio
+        $contrastRatio = $this->calculateContrastRatio($luminanceText, $luminanceBg);
+
+        // The WCAG threshold for normal text is 4.5:1
+        return $contrastRatio < 4.5;
+    }
+
+    /**
+     * Convert rgb(r,g,b) or rgba(r,g,b,a) to RGB array
+     *
+     * @param string $rgbString
+     * @return array|null
+     */
+    private function rgbToRgb(string $rgbString): ?array
+    {
+        // Handle RGB or RGBA formats like rgb(255, 0, 0) or rgba(255, 0, 0, 0.5)
+        if (preg_match('/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*\d+(\.\d+)?)?\)/', $rgbString, $matches)) {
+            return [(int)$matches[1], (int)$matches[2], (int)$matches[3]];
+        }
+        return null;
     }
 }
