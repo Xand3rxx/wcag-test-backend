@@ -24,24 +24,18 @@ class AccessibilityService
         $issues = [];
 
         // Assume full compliance initially
-        $compliance_score = 100;
+        $complianceScore = 100;
 
         // Split the HTML content by lines
         $lines = explode("\n", $htmlContent);
 
-        // Call individual check methods and aggregate the results
-        $compliance_score -= $this->checkMissingAltAttribute($htmlContent, $issues, $lines);
-        $compliance_score -= $this->checkSkippedHeadings($htmlContent, $issues, $lines);
-        $compliance_score -= $this->checkLowColorContrast($htmlContent, $issues, $lines);
-        $compliance_score -= $this->checkMissingTabIndex($htmlContent, $issues, $lines);
-        $compliance_score -= $this->checkMissingLabels($htmlContent, $issues, $lines);
-        $compliance_score -= $this->checkMissingSkipLink($htmlContent, $issues, $lines);
-        $compliance_score -= $this->checkFontSizeTooSmall($htmlContent, $issues, $lines);
-        $compliance_score -= $this->checkBrokenLinks($htmlContent, $issues, $lines);
-        $compliance_score -= $this->checkMissingInputLabels($htmlContent, $issues, $lines);
+        // Call each check method dynamically and aggregate the results
+        foreach ($this->testMethods() as $method) {
+            $complianceScore -= $this->$method($htmlContent, $issues, $lines);
+        }
 
         return [
-            'compliance_score' => $compliance_score,
+            'compliance_score' => $complianceScore,
             'issues' => $issues
         ];
     }
@@ -528,5 +522,23 @@ class AccessibilityService
             return [(int)$matches[1], (int)$matches[2], (int)$matches[3]];
         }
         return null;
+    }
+
+    /**
+     * Functions for analyzing and improving the accessibility of HTML content
+     */
+    private function testMethods(): array
+    {
+        return [
+            'checkMissingAltAttribute',
+            'checkSkippedHeadings',
+            'checkLowColorContrast',
+            'checkMissingTabIndex',
+            'checkMissingLabels',
+            'checkMissingSkipLink',
+            'checkFontSizeTooSmall',
+            'checkBrokenLinks',
+            'checkMissingInputLabels'
+        ];
     }
 }
