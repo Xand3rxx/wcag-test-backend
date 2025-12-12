@@ -3,11 +3,25 @@ services:
         build:
             context: ./
             dockerfile: ./Dockerfile
-        image: wcag-backend
+        image: wcag-backend:latest
         container_name: wcag-backend
-        restart: always
+        restart: unless-stopped
         ports:
             - "9600:80"
         volumes:
-            - ./docker/www.conf.default:/usr/local/etc/php-fpm.d/www.conf.default
-            - ./docker/www.conf:/usr/local/etc/php-fpm.d/www.conf
+            - ./storage/logs:/var/www/storage/logs
+        environment:
+            - APP_ENV=production
+            - APP_DEBUG=false
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost/up"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+        networks:
+            - wcag-network
+
+networks:
+    wcag-network:
+        driver: bridge

@@ -1,19 +1,23 @@
 <?php
 
+namespace Tests\Unit;
+
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Test;
+use App\Services\AccessibilityService;
 
 class AccessibilityServiceTest extends TestCase
 {
-    private $accessibilityService;
+    private AccessibilityService $accessibilityService;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->accessibilityService = new \App\Services\AccessibilityService();
+        $this->accessibilityService = new AccessibilityService();
     }
 
     #[Test]
-    public function test_it_detects_missing_alt_attribute()
+    public function it_detects_missing_alt_attribute(): void
     {
         // Test HTML with a missing alt attribute
         $htmlContent = '<html><body><img src="image.jpg" /></body></html>';
@@ -35,7 +39,7 @@ class AccessibilityServiceTest extends TestCase
     }
 
     #[Test]
-    public function test_it_detects_skipped_heading_levels()
+    public function it_detects_skipped_heading_levels(): void
     {
         // Test HTML with skipped heading levels (e.g., <h1> followed by <h3>)
         $htmlContent = '<html><body><h1>Main Heading</h1><h3>Sub Heading</h3></body></html>';
@@ -57,7 +61,7 @@ class AccessibilityServiceTest extends TestCase
     }
 
     #[Test]
-    public function test_it_detects_missing_tabindex_for_interactive_elements()
+    public function it_detects_missing_tabindex_for_interactive_elements(): void
     {
         // Test HTML with a missing tabindex on a button
         $htmlContent = '<html><body><button>Click Me</button></body></html>';
@@ -79,7 +83,7 @@ class AccessibilityServiceTest extends TestCase
     }
 
     #[Test]
-    public function test_it_detects_missing_labels_for_form_fields()
+    public function it_detects_missing_labels_for_form_fields(): void
     {
         // Test HTML with an input element missing a label
         $htmlContent = '<html><body><input type="text" id="name" /></body></html>';
@@ -96,12 +100,12 @@ class AccessibilityServiceTest extends TestCase
 
         // Assert that the issue is detected for missing labels
         $this->assertArrayHasKey('missing_labels', $issues);
-        $this->assertCount(1, $issues['missing_labels']);  // Only one issue should be present
+        $this->assertCount(1, $issues['missing_labels']);
         $this->assertEquals('Form field missing label', $issues['missing_labels'][0]['issue']);
     }
 
     #[Test]
-    public function test_it_detects_missing_skip_navigation_link()
+    public function it_detects_missing_skip_navigation_link(): void
     {
         // Test HTML missing a skip navigation link
         $htmlContent = '<html><body><p>Some content here</p></body></html>';
@@ -123,7 +127,7 @@ class AccessibilityServiceTest extends TestCase
     }
 
     #[Test]
-    public function test_it_detects_font_size_too_small()
+    public function it_detects_font_size_too_small(): void
     {
         // Test HTML with a small font size
         $htmlContent = '<html><body><p style="font-size: 12px;">Small text</p></body></html>';
@@ -145,7 +149,7 @@ class AccessibilityServiceTest extends TestCase
     }
 
     #[Test]
-    public function test_it_detects_broken_links()
+    public function it_detects_broken_links(): void
     {
         // Test HTML with a broken link
         $htmlContent = '<html><body><a href="#">Broken Link</a></body></html>';
@@ -166,8 +170,8 @@ class AccessibilityServiceTest extends TestCase
         $this->assertEquals('Broken link or missing href attribute', $issues['broken_links']['issue']);
     }
 
-    // #[Test]
-    public function test_it_detects_missing_input_labels()
+    #[Test]
+    public function it_detects_missing_input_labels(): void
     {
         // Test HTML with an input element missing a matching label
         $htmlContent = '<html><body><input type="text" id="email" /></body></html>';
@@ -184,7 +188,58 @@ class AccessibilityServiceTest extends TestCase
 
         // Assert that the issue is detected for missing input labels
         $this->assertArrayHasKey('missing_input_labels', $issues);
-
+        $this->assertCount(1, $issues['missing_input_labels']['details']);
         $this->assertEquals('Missing label for input element', $issues['missing_input_labels']['issue']);
+    }
+
+    #[Test]
+    public function it_analyzes_full_html_content(): void
+    {
+        // Test full analysis with multiple issues
+        $htmlContent = '<!DOCTYPE html>
+<html>
+<head><title>Test</title></head>
+<body>
+    <img src="test.jpg" />
+    <h1>Heading 1</h1>
+    <h3>Heading 3</h3>
+    <p style="font-size: 10px;">Small text</p>
+</body>
+</html>';
+
+        $result = $this->accessibilityService->analyzeAccessibility($htmlContent);
+
+        // Verify structure
+        $this->assertArrayHasKey('compliance_score', $result);
+        $this->assertArrayHasKey('issues', $result);
+        
+        // Score should be less than 100 due to issues
+        $this->assertLessThan(100, $result['compliance_score']);
+    }
+
+    #[Test]
+    public function it_returns_full_score_for_compliant_html(): void
+    {
+        // Test HTML that is fully compliant with all accessibility checks
+        $htmlContent = '<html><body>
+            <a href="#maincontent" class="skip-link" tabindex="0">Skip to Content</a>
+            <img src="image.jpg" alt="Description of the image" />
+            <h1>Main Heading</h1>
+            <h2>Sub Heading</h2>
+            <label for="name">Name</label>
+            <input type="text" id="name" aria-labelledby="name" tabindex="0" />
+            <button tabindex="0">Click Me</button>
+            <a href="https://example.com" tabindex="0">Valid Link</a>
+            <p style="font-size: 16px;">Normal text</p>
+        </body></html>';
+
+        $result = $this->accessibilityService->analyzeAccessibility($htmlContent);
+
+        // Verify structure
+        $this->assertArrayHasKey('compliance_score', $result);
+        $this->assertArrayHasKey('issues', $result);
+        
+        // Score should be 100 for compliant HTML
+        $this->assertEquals(100, $result['compliance_score']);
     }
 }

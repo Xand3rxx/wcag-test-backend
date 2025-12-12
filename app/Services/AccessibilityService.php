@@ -211,7 +211,17 @@ class AccessibilityService
     public function checkMissingSkipLink(string $htmlContent, array &$issues, array $lines): int
     {
         $scoreDeducted = 0;
-        if (strpos($htmlContent, '<a href="#maincontent" class="skip-link">Skip to Content</a>') === false) {
+        
+        // Check for skip link patterns: href starting with # and containing skip-related text or class
+        $hasSkipLink = preg_match(
+            '/<a[^>]*href=["\']#[^"\']*["\'][^>]*>.*?(skip|jump|main|content).*?<\/a>/is',
+            $htmlContent
+        ) || preg_match(
+            '/<a[^>]*class=["\'][^"\']*skip[^"\']*["\'][^>]*>/i',
+            $htmlContent
+        );
+        
+        if (!$hasSkipLink) {
             $this->addIssue($issues, 'Missing skip navigation link', 'missing_skip_link', 1, '<a href="#maincontent" class="skip-link">Skip to Content</a>');
             $scoreDeducted += 5;
         }
