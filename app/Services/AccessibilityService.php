@@ -34,6 +34,9 @@ class AccessibilityService
             $complianceScore -= $this->$method($htmlContent, $issues, $lines);
         }
 
+        // Ensure score stays within valid range (0-100)
+        $complianceScore = max(0, min(100, $complianceScore));
+
         return [
             'compliance_score' => $complianceScore,
             'issues' => $issues

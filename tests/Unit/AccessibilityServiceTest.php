@@ -218,6 +218,28 @@ class AccessibilityServiceTest extends TestCase
     }
 
     #[Test]
+    public function it_clamps_score_to_zero_for_highly_non_compliant_html(): void
+    {
+        // Test HTML with many issues that would result in negative score
+        $htmlContent = '<html><body>
+            <img src="1.jpg" /><img src="2.jpg" /><img src="3.jpg" />
+            <img src="4.jpg" /><img src="5.jpg" /><img src="6.jpg" />
+            <h1>Title</h1><h4>Skipped</h4><h6>Skipped more</h6>
+            <input type="text" /><input type="email" /><input type="tel" />
+            <button>No tabindex</button>
+            <a href="#">Broken</a><a href="#">Also broken</a>
+            <p style="font-size: 8px;">Tiny</p>
+            <p style="font-size: 10px;">Small</p>
+        </body></html>';
+
+        $result = $this->accessibilityService->analyzeAccessibility($htmlContent);
+
+        // Score should be clamped to 0, not negative
+        $this->assertGreaterThanOrEqual(0, $result['compliance_score']);
+        $this->assertLessThanOrEqual(100, $result['compliance_score']);
+    }
+
+    #[Test]
     public function it_returns_full_score_for_compliant_html(): void
     {
         // Test HTML that is fully compliant with all accessibility checks
