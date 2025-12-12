@@ -58,7 +58,12 @@ class AccessibilityService
 
         foreach ($images[0] as $img) {
             $lineNumber = $this->getLineNumber($lines, $img);
-            if (strpos($img, 'alt="') === false && strpos($img, 'alt=""') === false) {
+            // Check for alt attribute with any quote style or as boolean attribute
+            $hasAlt = preg_match('/\salt[=\s>]/i', $img) || 
+                      preg_match('/\salt="[^"]*"/i', $img) || 
+                      preg_match("/\salt='[^']*'/i", $img);
+            
+            if (!$hasAlt) {
                 $this->addIssue($issues, 'Missing alt attribute for image', 'missing_alt', $lineNumber, $img);
                 $scoreDeducted += 5;
             }
@@ -77,7 +82,7 @@ class AccessibilityService
      */
     public function checkSkippedHeadings(string $htmlContent, array &$issues, array $lines): int
     {
-        preg_match_all('/<h(\d)>.*?<\/h\1>/i', $htmlContent, $headings);
+        preg_match_all('/<h(\d)[^>]*>.*?<\/h\1>/is', $htmlContent, $headings);
         $scoreDeducted = 0;
 
         for ($i = 1; $i < count($headings[1]); $i++) {
@@ -101,32 +106,31 @@ class AccessibilityService
      */
     public function checkLowColorContrast(string $htmlContent, array &$issues, array $lines): int
     {
-        // Regex to find color and background-color in the content, matching both hex and rgb/rgba
-        preg_match_all('/(?:color|background-color):\s*(#[a-fA-F0-9]{6}|rgb\([^\)]+\)|rgba\([^\)]+\))/i', $htmlContent, $matches);
+        // Find elements with both color and background-color defined
+        preg_match_all('/style=["\'][^"\']*color:\s*(#[a-fA-F0-9]{3,6}|rgb\([^\)]+\)|rgba\([^\)]+\))[^"\']*background-color:\s*(#[a-fA-F0-9]{3,6}|rgb\([^\)]+\)|rgba\([^\)]+\))[^"\']*["\']|style=["\'][^"\']*background-color:\s*(#[a-fA-F0-9]{3,6}|rgb\([^\)]+\)|rgba\([^\)]+\))[^"\']*color:\s*(#[a-fA-F0-9]{3,6}|rgb\([^\)]+\)|rgba\([^\)]+\))[^"\']*["\']/i', $htmlContent, $matches, PREG_SET_ORDER);
 
         $scoreDeducted = 0;
 
-        // Loop through all colors found and compare them
-        for ($i = 0; $i < count($matches[1]); $i++) {
-            // We get both the color and background-color (pairwise comparison)
-            $textColor = $matches[1][$i];
-            $bgColor = $matches[1][($i + 1) % count($matches[1])]; // Cycle through next one as background color
+        foreach ($matches as $match) {
+            // Get text color and background color from either match pattern
+            $textColor = !empty($match[1]) ? $match[1] : $match[4];
+            $bgColor = !empty($match[2]) ? $match[2] : $match[3];
+
+            if (empty($textColor) || empty($bgColor)) {
+                continue;
+            }
 
             // Convert colors to RGB format
-            $rgbTextColor = $this->hexToRgb($textColor);
-            $rgbBgColor = $this->hexToRgb($bgColor);
+            $rgbTextColor = $this->parseColor($textColor);
+            $rgbBgColor = $this->parseColor($bgColor);
 
-            // If they are not in hex format, try to convert rgb/rgba to hex
-            if (!$rgbTextColor) {
-                $rgbTextColor = $this->rgbToRgb($textColor);
-            }
-            if (!$rgbBgColor) {
-                $rgbBgColor = $this->rgbToRgb($bgColor);
+            // Skip if we couldn't parse either color
+            if ($rgbTextColor === null || $rgbBgColor === null) {
+                continue;
             }
 
             // Check if contrast ratio is too low
             if ($this->isLowContrast($rgbTextColor, $rgbBgColor)) {
-                // Add issue and deduct score
                 $lineNumber = $this->getLineNumber($lines, $textColor);
                 $this->addIssue($issues, 'Low color contrast', 'low_color_contrast', $lineNumber, "Color: $textColor, Background: $bgColor");
                 $scoreDeducted += 5;
@@ -137,7 +141,8 @@ class AccessibilityService
     }
 
     /**
-     * Check for missing tabindex for interactive elements (e.g., buttons, links)
+     * Check for missing keyboard accessibility on custom interactive elements
+     * Note: Native <a>, <button>, <input>, <select>, <textarea> are already focusable
      *
      * @param string $htmlContent
      * @param array &$issues
@@ -146,13 +151,18 @@ class AccessibilityService
      */
     public function checkMissingTabIndex(string $htmlContent, array &$issues, array $lines): int
     {
-        preg_match_all('/<a[^>]*href="[^"]*"[^>]*>|<button[^>]*>.*?<\/button>/i', $htmlContent, $interactiveElements);
+        // Find elements with click handlers that aren't natively focusable
+        preg_match_all('/<(div|span|li|tr|td|img|p)[^>]*(onclick|ng-click|@click|\(click\))[^>]*>/i', $htmlContent, $customInteractive);
         $scoreDeducted = 0;
 
-        foreach ($interactiveElements[0] as $element) {
+        foreach ($customInteractive[0] as $element) {
             $lineNumber = $this->getLineNumber($lines, $element);
-            if (strpos($element, 'tabindex="') === false) {
-                $this->addIssue($issues, 'Missing tabindex for interactive elements', 'missing_tabindex', $lineNumber, $element);
+            // Check if element has tabindex or role with keyboard support
+            $hasKeyboardAccess = preg_match('/tabindex=["\'][^"\']*["\']/i', $element) ||
+                                 preg_match('/role=["\'](button|link|menuitem)["\'].*tabindex/i', $element);
+            
+            if (!$hasKeyboardAccess) {
+                $this->addIssue($issues, 'Interactive element not keyboard accessible', 'missing_tabindex', $lineNumber, $element);
                 $scoreDeducted += 5;
             }
         }
@@ -170,12 +180,17 @@ class AccessibilityService
      */
     public function checkMissingLabels(string $htmlContent, array &$issues, array $lines): int
     {
-        // Get all input elements
-        preg_match_all('/<input[^>]*>/i', $htmlContent, $formInputs);
+        // Get all input, select, and textarea elements (excluding hidden and submit/button types)
+        preg_match_all('/<(input|select|textarea)[^>]*>/i', $htmlContent, $formInputs);
         $scoreDeducted = 0;
         $processedInputs = [];
 
         foreach ($formInputs[0] as $input) {
+            // Skip hidden inputs and button/submit types
+            if (preg_match('/type=["\']?(hidden|submit|button|reset|image)["\']?/i', $input)) {
+                continue;
+            }
+
             $lineNumber = $this->getLineNumber($lines, $input);
 
             // Skip if this input has already been processed
@@ -186,16 +201,9 @@ class AccessibilityService
             // Mark this input as processed
             $processedInputs[] = $input;
 
-            // Check if the input has an associated label (either by 'for' attribute or 'aria-labelledby')
+            // Check if the input has an associated label
             if (!$this->hasAssociatedLabel($input, $htmlContent)) {
-                if (!isset($issues['missing_labels'])) {
-                    $issues['missing_labels'] = [];
-                }
-                $issues['missing_labels'][] = [
-                    'issue' => 'Form field missing label',
-                    'line' => $lineNumber,
-                    'details' => $input
-                ];
+                $this->addIssue($issues, 'Form field missing label', 'missing_labels', $lineNumber, $input);
                 $scoreDeducted += 5;
             }
         }
@@ -233,7 +241,7 @@ class AccessibilityService
     }
 
     /**
-     * Check for font size being too small
+     * Check for font size being too small (less than 14px for body text)
      *
      * @param string $htmlContent
      * @param array &$issues
@@ -242,13 +250,24 @@ class AccessibilityService
      */
     public function checkFontSizeTooSmall(string $htmlContent, array &$issues, array $lines): int
     {
-        preg_match_all('/font-size:\s*(\d+)px/i', $htmlContent, $fontSizes);
+        preg_match_all('/font-size:\s*(\d+(?:\.\d+)?)(px|pt|em|rem)/i', $htmlContent, $fontSizes, PREG_SET_ORDER);
         $scoreDeducted = 0;
 
-        foreach ($fontSizes[1] as $fontSize) {
-            $lineNumber = $this->getLineNumber($lines, "font-size: $fontSize");
-            if (intval($fontSize) < 16) {
-                $this->addIssue($issues, 'Font size too small', 'font_size_too_small', $lineNumber, "<p style='font-size: {$fontSize}px;'>Small text</p>");
+        foreach ($fontSizes as $match) {
+            $size = floatval($match[1]);
+            $unit = strtolower($match[2]);
+            
+            // Convert to approximate px for comparison
+            $pxSize = match($unit) {
+                'pt' => $size * 1.333,
+                'em', 'rem' => $size * 16,
+                default => $size
+            };
+
+            // WCAG recommends minimum 14px for body text
+            if ($pxSize < 14) {
+                $lineNumber = $this->getLineNumber($lines, $match[0]);
+                $this->addIssue($issues, 'Font size too small', 'font_size_too_small', $lineNumber, "<p style='{$match[0]};'>Small text</p>");
                 $scoreDeducted += 5;
             }
         }
@@ -257,7 +276,7 @@ class AccessibilityService
     }
 
     /**
-     * Check for broken links
+     * Check for broken or placeholder links
      *
      * @param string $htmlContent
      * @param array &$issues
@@ -266,49 +285,14 @@ class AccessibilityService
      */
     public function checkBrokenLinks(string $htmlContent, array &$issues, array $lines): int
     {
-        preg_match_all('/<a href="([^"]+)"/i', $htmlContent, $links);
+        preg_match_all('/<a[^>]*href=["\']([^"\']*)["\'][^>]*>/i', $htmlContent, $links);
         $scoreDeducted = 0;
 
-        foreach ($links[1] as $link) {
-            $lineNumber = $this->getLineNumber($lines, $link);
+        foreach ($links[1] as $index => $link) {
             if ($this->isBrokenLink($link)) {
-                $this->addIssue($issues, 'Broken link or missing href attribute', 'broken_links', $lineNumber, "<a href='$link'>Broken Link</a>");
+                $lineNumber = $this->getLineNumber($lines, $links[0][$index]);
+                $this->addIssue($issues, 'Broken link or placeholder href', 'broken_links', $lineNumber, $links[0][$index]);
                 $scoreDeducted += 5;
-            }
-        }
-
-        return $scoreDeducted;
-    }
-
-    /**
-     * Check for missing input labels
-     *
-     * @param string $htmlContent
-     * @param array &$issues
-     * @param array $lines
-     * @return int
-     */
-    public function checkMissingInputLabels(string $htmlContent, array &$issues, array $lines): int
-    {
-        preg_match_all('/<input[^>]*>/i', $htmlContent, $inputs);  // Get all input tags
-        $scoreDeducted = 0;
-        $processedInputs = [];  // Track which inputs have been checked
-
-        foreach ($inputs[0] as $input) {
-            $lineNumber = $this->getLineNumber($lines, $input);
-
-            // Check if input has been processed already
-            if (in_array($input, $processedInputs)) {
-                continue; // Skip if this input has already been checked
-            }
-
-            // Mark this input as processed
-            $processedInputs[] = $input;
-
-            // Check if the input has an associated label
-            if (!$this->hasAssociatedLabel($input, $htmlContent)) {
-                $this->addIssue($issues, 'Missing label for input element', 'missing_input_labels', $lineNumber, $input);
-                $scoreDeducted += 10;  // Deduct 10 points for missing label
             }
         }
 
@@ -325,9 +309,9 @@ class AccessibilityService
      * @param string $htmlSnippet
      * @return void
      */
-    private function addIssue(array &$issues, string $issue, string $category, int $line, $htmlSnippet)
+    private function addIssue(array &$issues, string $issue, string $category, int $line, $htmlSnippet): void
     {
-        // If the category doesn't exist, initialize it as an empty array
+        // If the category doesn't exist, initialize it
         if (!isset($issues[$category])) {
             $issues[$category] = [
                 'issue' => $issue,
@@ -342,23 +326,21 @@ class AccessibilityService
             'faulted_html' => $htmlSnippet,
             'sample_html' => $this->getSampleHTML($category)
         ];
-
-        // This ensures categories with no issues are excluded from the final list
-        if (empty($issues[$category]['details'])) {
-            unset($issues[$category]);
-        }
     }
 
     /**
      * Calculate the contrast ratio between two luminance values.
+     * Always returns ratio >= 1 by putting lighter color on top.
      *
-     * @param float $l1 Luminance of the lighter color
-     * @param float $l2 Luminance of the darker color
+     * @param float $l1 Luminance of first color
+     * @param float $l2 Luminance of second color
      * @return float
      */
     private function calculateContrastRatio(float $l1, float $l2): float
     {
-        return ($l1 + 0.05) / ($l2 + 0.05);
+        $lighter = max($l1, $l2);
+        $darker = min($l1, $l2);
+        return ($lighter + 0.05) / ($darker + 0.05);
     }
 
     /**
@@ -379,6 +361,24 @@ class AccessibilityService
         }
 
         return 0.2126 * $rgb[0] + 0.7152 * $rgb[1] + 0.0722 * $rgb[2];
+    }
+
+    /**
+     * Parse a color string to RGB array
+     *
+     * @param string $color
+     * @return array|null
+     */
+    private function parseColor(string $color): ?array
+    {
+        // Try hex format first
+        $rgb = $this->hexToRgb($color);
+        if ($rgb !== null) {
+            return $rgb;
+        }
+        
+        // Try rgb/rgba format
+        return $this->rgbToRgb($color);
     }
 
     /**
@@ -413,12 +413,11 @@ class AccessibilityService
             'missing_alt' => '<img src="image.jpg" alt="Description of image" />',
             'skipped_headings' => '<h1>Main Heading</h1><h2>Sub Heading</h2>',
             'low_color_contrast' => '<p style="color: #000000; background-color: #ffffff;">Good contrast text</p>',
-            'missing_tabindex' => '<button tabindex="0">Click Me</button>',
-            'missing_labels' => '<input type="text" id="name" /><label for="name">Name</label>',
+            'missing_tabindex' => '<div onclick="..." tabindex="0" role="button">Click Me</div>',
+            'missing_labels' => '<label for="name">Name</label><input type="text" id="name" />',
             'missing_skip_link' => '<a href="#maincontent" class="skip-link">Skip to Content</a>',
             'font_size_too_small' => '<p style="font-size: 16px;">Text with appropriate size</p>',
-            'broken_links' => '<a href="https://google.com">Valid Link</a>',
-            'missing_input_labels' => '<input type="text" id="email" /><label for="email">Email</label>',
+            'broken_links' => '<a href="https://example.com">Valid Link</a>',
             default => '<!-- No sample available -->',
         };
     }
@@ -432,15 +431,14 @@ class AccessibilityService
     private function getSuggestedFix(string $category): string
     {
         return match ($category) {
-            'missing_alt' => 'Add an alt attribute to the image.',
+            'missing_alt' => 'Add an alt attribute to the image. Use alt="" for decorative images.',
             'skipped_headings' => 'Ensure headings follow a logical order (e.g., <h1>, <h2>, <h3>).',
-            'low_color_contrast' => 'Ensure sufficient contrast between text and background colors.',
-            'missing_tabindex' => 'Ensure all interactive elements are accessible using keyboard navigation.',
-            'missing_labels' => 'Ensure all form fields have associated labels using the <label> tag or aria-labelledby attribute.',
-            'missing_skip_link' => 'Add a "Skip to Content" link at the top of the page for easier navigation.',
-            'font_size_too_small' => 'Ensure text size is at least 16px or resizable.',
-            'broken_links' => 'Ensure all links have a valid href attribute.',
-            'missing_input_labels' => 'Ensure all input elements have a corresponding label with a matching "for" attribute.',
+            'low_color_contrast' => 'Ensure contrast ratio is at least 4.5:1 for normal text, 3:1 for large text.',
+            'missing_tabindex' => 'Add tabindex="0" and appropriate role to make custom interactive elements keyboard accessible.',
+            'missing_labels' => 'Add a <label> with matching "for" attribute, or use aria-label/aria-labelledby.',
+            'missing_skip_link' => 'Add a "Skip to Content" link at the top of the page for keyboard users.',
+            'font_size_too_small' => 'Ensure body text size is at least 14px (16px recommended).',
+            'broken_links' => 'Replace placeholder href with a valid URL or use a button for actions.',
             default => 'No suggested fix available.',
         };
     }
@@ -454,52 +452,87 @@ class AccessibilityService
      */
     private function hasAssociatedLabel(string $input, string $htmlContent): bool
     {
+        // Check for aria-label attribute (directly on input)
+        if (preg_match('/aria-label=["\'][^"\']+["\']/i', $input)) {
+            return true;
+        }
+
+        // Check for aria-labelledby attribute
+        if (preg_match('/aria-labelledby=["\'][^"\']+["\']/i', $input)) {
+            return true;
+        }
+
+        // Check for title attribute (fallback labeling method)
+        if (preg_match('/title=["\'][^"\']+["\']/i', $input)) {
+            return true;
+        }
+
         // Check if the input has an 'id' and a <label> with a matching 'for' attribute
-        if (preg_match('/id="([^"]+)"/i', $input, $matches)) {
+        if (preg_match('/id=["\']([^"\']+)["\']/i', $input, $matches)) {
             $inputId = $matches[1];
             // Check if there's a matching <label> with for="inputId"
-            if (preg_match('/<label[^>]*for="' . preg_quote($inputId, '/') . '"[^>]*>/i', $htmlContent)) {
-                return true; // Found a matching <label> with for="inputId"
+            if (preg_match('/<label[^>]*for=["\']' . preg_quote($inputId, '/') . '["\'][^>]*>/i', $htmlContent)) {
+                return true;
             }
         }
 
-        // Check if the input has 'aria-labelledby' attribute
-        if (strpos($input, 'aria-labelledby') !== false) {
-            return true; // The input has an aria-labelledby attribute, consider it labeled
+        // Check if input is wrapped inside a <label> element
+        if (preg_match('/<label[^>]*>[^<]*' . preg_quote($input, '/') . '/i', $htmlContent)) {
+            return true;
         }
 
-        // If no label or aria-labelledby is found, return false
         return false;
     }
 
     /**
-     * Convert Hex color to RGB array
+     * Convert Hex color to RGB array (supports 3 and 6 digit hex)
      *
      * @param string $hexColor
      * @return array|null
      */
     private function hexToRgb(string $hexColor): ?array
     {
-        // If it's already in hex form like #ffffff, convert to RGB
+        // 6-digit hex
         if (preg_match('/^#([a-fA-F0-9]{6})$/', $hexColor, $matches)) {
-            $r = hexdec($matches[1][0] . $matches[1][1]);
-            $g = hexdec($matches[1][2] . $matches[1][3]);
-            $b = hexdec($matches[1][4] . $matches[1][5]);
-            return [$r, $g, $b];
+            $hex = $matches[1];
+            return [
+                hexdec(substr($hex, 0, 2)),
+                hexdec(substr($hex, 2, 2)),
+                hexdec(substr($hex, 4, 2))
+            ];
         }
+        
+        // 3-digit hex (shorthand)
+        if (preg_match('/^#([a-fA-F0-9]{3})$/', $hexColor, $matches)) {
+            $hex = $matches[1];
+            return [
+                hexdec($hex[0] . $hex[0]),
+                hexdec($hex[1] . $hex[1]),
+                hexdec($hex[2] . $hex[2])
+            ];
+        }
+        
         return null;
     }
 
     /**
-     * Helper function to check if the link is broken
+     * Helper function to check if the link is broken or a placeholder
      *
      * @param string $url
      * @return bool
      */
     private function isBrokenLink(string $url): bool
     {
-        // Implement a check for broken links (simplified for example)
-        return $url === '#';
+        $url = trim($url);
+        
+        // Check for common placeholder/broken patterns
+        return $url === '#' ||
+               $url === '' ||
+               $url === '#!' ||
+               stripos($url, 'javascript:') === 0 ||
+               $url === 'javascript:void(0)' ||
+               $url === 'javascript:void(0);' ||
+               $url === 'javascript:;';
     }
 
     /**
@@ -515,10 +548,10 @@ class AccessibilityService
         $luminanceText = $this->calculateLuminance($rgbTextColor[0], $rgbTextColor[1], $rgbTextColor[2]);
         $luminanceBg = $this->calculateLuminance($rgbBgColor[0], $rgbBgColor[1], $rgbBgColor[2]);
 
-        // Calculate contrast ratio
+        // Calculate contrast ratio (always >= 1 due to max/min in calculateContrastRatio)
         $contrastRatio = $this->calculateContrastRatio($luminanceText, $luminanceBg);
 
-        // The WCAG threshold for normal text is 4.5:1
+        // The WCAG AA threshold for normal text is 4.5:1
         return $contrastRatio < 4.5;
     }
 
@@ -531,14 +564,14 @@ class AccessibilityService
     private function rgbToRgb(string $rgbString): ?array
     {
         // Handle RGB or RGBA formats like rgb(255, 0, 0) or rgba(255, 0, 0, 0.5)
-        if (preg_match('/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*\d+(\.\d+)?)?\)/', $rgbString, $matches)) {
+        if (preg_match('/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*[\d.]+)?\s*\)/i', $rgbString, $matches)) {
             return [(int)$matches[1], (int)$matches[2], (int)$matches[3]];
         }
         return null;
     }
 
     /**
-     * Functions for analyzing and improving the accessibility of HTML content
+     * Methods for analyzing HTML content accessibility
      */
     private function testMethods(): array
     {
@@ -551,7 +584,7 @@ class AccessibilityService
             'checkMissingSkipLink',
             'checkFontSizeTooSmall',
             'checkBrokenLinks',
-            'checkMissingInputLabels'
+            // Note: checkMissingInputLabels removed - consolidated into checkMissingLabels
         ];
     }
 }
